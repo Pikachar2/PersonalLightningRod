@@ -37,7 +37,7 @@ for name, teq in pairs(lightning_rod_eq) do
 	if settings.startup["personal-lightning-rod-allow-non-armor"].value then
 		teq.categories = { 'armor' }
 	else
-		teq.categories = { 'armor-transformer' }
+		teq.categories = { 'armor-lightning-rod' }
 	end
 	
 	log('\n\n')

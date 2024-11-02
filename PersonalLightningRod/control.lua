@@ -3,12 +3,10 @@ local my_types = {"car", "spider-vehicle", "locomotive", "cargo-wagon", "fluid-w
 
 -- This is a delay constant for controlling how often the transformer script runs. The mod will behave reasonably for any value from 1 to 6.
 -- Lower values are more UPS intensive but have finer updates, while higher values are less UPS intensive but have coarser updates.
-local tickdelay = settings.global["personal-transformer2-tick-delay"].value
+local tickdelay = settings.global["personal-lightning-rod-tick-delay"].value
 
 
-local mk1_draw = settings.startup["personal-transformer-mk1-flow-limit"].value * 1000
-local mk2_draw = settings.startup["personal-transformer-mk2-flow-limit"].value * 1000
-local mk3_draw = settings.startup["personal-transformer-mk3-flow-limit"].value * 1000
+local mk1_draw = settings.startup["personal-lightning-rod-flow-limit"].value * 1000
 
 --local mk1_draw = 200000
 --local mk2_draw = 1000000
@@ -16,19 +14,15 @@ local mk3_draw = settings.startup["personal-transformer-mk3-flow-limit"].value *
 
 -- grid_owner_type can be "player" or "entity"
 
-local personal_transformer_mk1_name = "personal-transformer-equipment"
-local personal_transformer_mk2_name = "personal-transformer-mk2-equipment"
-local personal_transformer_mk3_name = "personal-transformer-mk3-equipment"
-local isVehicleGridAllowed = settings.startup["personal-transformer2-allow-non-armor"].value;
+local personal_lightning_rod_name = "personal-lightning-rod-equipment"
+local isVehicleGridAllowed = settings.startup["personal-lightning-rod-allow-non-armor"].value;
 
 local transformer_draw = {}
-transformer_draw[personal_transformer_mk1_name] = mk1_draw
-transformer_draw[personal_transformer_mk2_name] = mk2_draw
-transformer_draw[personal_transformer_mk3_name] = mk3_draw
+transformer_draw[personal_lightning_rod_name] = mk1_draw
 
 -- need grid_vehicles in order to reference vehicle by grid
 storage.grid_vehicles = storage.grid_vehicles or {}
-storage.transformer_data = storage.transformer_data or {}
+storage.lightning_rod_data = storage.lightning_rod_data or {}
 
 local vehicle_event_filters = {
 	{filter = "type", type = "car"},
@@ -39,22 +33,18 @@ local vehicle_event_filters = {
 	{filter = "type", type = "artillery-wagon"}
 }
 
-local pt_entity_event_filters = {
-	{filter = "name", name = "personal-transformer-input-entity"},
-	{filter = "name", name = "personal-transformer-output-entity"},
-	{filter = "name", name = "personal-transformer-mk2-input-entity"},
-	{filter = "name", name = "personal-transformer-mk2-output-entity"},
-	{filter = "name", name = "personal-transformer-mk3-input-entity"},
-	{filter = "name", name = "personal-transformer-mk3-output-entity"}
+local plr_entity_event_filters = {
+	{filter = "name", name = "personal-lightning-rod-input-entity"},
+	{filter = "name", name = "personal-lightning-rod-output-entity"}
 }
 
 local is_quality_enabled = script.active_mods["quality"] 
 
 
 --[[
-	storage.transformer_data[grid_id] = {
-		grid_transformer_entities = {list of transformer entities},
-		transformer_count[level] = someNum
+	storage.lightning_rod_data[grid_id] = {
+		grid_lightning_rod_entities = {list of transformer entities},
+		lightning_rod_count[level] = someNum
 		grid_owner_id = someNum
 		grid_owner_type = player/entity
 		max_grid_draw = someNum
@@ -64,11 +54,11 @@ local is_quality_enabled = script.active_mods["quality"]
 
 script.on_init(
 	function()
-		storage.transformer_data = storage.transformer_data or {}
-		-- log ('init --- storage.transformer_data = '.. serpent.dump(storage.transformer_data))
+		storage.lightning_rod_data = storage.lightning_rod_data or {}
+		-- log ('init --- storage.lightning_rod_data = '.. serpent.dump(storage.lightning_rod_data))
 		-- I don't like this, but it wont work in on_init for some reason... need to figure that out once the rest is working
-		if storage.transformer_data == nil then
-			storage.transformer_data = {}
+		if storage.lightning_rod_data == nil then
+			storage.lightning_rod_data = {}
 		end
 
 		storage.grid_vehicles = storage.grid_vehicles or {}
@@ -90,8 +80,8 @@ script.on_configuration_changed(
 	-- storage.grid_vehicles = {}
 		log ('on_configuration_changed --- migrations starting...')
 		log ('on_configuration_changed start --- storage.grid_vehicles = '.. serpent.block(storage.grid_vehicles))
-		if storage.transformer_data == nil then
-			storage.transformer_data = {}
+		if storage.lightning_rod_data == nil then
+			storage.lightning_rod_data = {}
 		end
 		storage.grid_vehicles = {}
 		for s, surface in pairs(game.surfaces) do
@@ -106,7 +96,7 @@ script.on_configuration_changed(
 				end
 			end
 		end
-		log ('on_configuration_changed end --- storage.transformer_data = '.. serpent.block(storage.transformer_data))
+		log ('on_configuration_changed end --- storage.lightning_rod_data = '.. serpent.block(storage.lightning_rod_data))
 		log ('on_configuration_changed end --- storage.grid_vehicles = '.. serpent.block(storage.grid_vehicles))
 	end
 )
@@ -144,11 +134,11 @@ script.on_event(defines.events.on_equipment_removed,
 	function(event)
 --		log ('on_equipment_removed start --- ')
 		local grid_id = event.grid.unique_id
-		if storage.transformer_data[grid_id] == nil then
+		if storage.lightning_rod_data[grid_id] == nil then
 			return
 		end
 
-		if storage.transformer_data[grid_id].grid_owner_type == "player" or storage.transformer_data[grid_id].grid_owner_type == nil then
+		if storage.lightning_rod_data[grid_id].grid_owner_type == "player" or storage.lightning_rod_data[grid_id].grid_owner_type == nil then
 			equipmentRemoved(grid_id, event.equipment, event.count)
 			return
 		end
@@ -160,19 +150,19 @@ script.on_event(defines.events.on_equipment_removed,
 		local valid_vehicle =  storage.grid_vehicles[grid_id] -- and storage.grid_vehicles[grid_id].entity
 		
 		if valid_vehicle and valid_vehicle.valid then
-			if storage.transformer_data[grid_id].grid_owner_type == "entity" or storage.transformer_data[grid_id].grid_owner_type == nil then
+			if storage.lightning_rod_data[grid_id].grid_owner_type == "entity" or storage.lightning_rod_data[grid_id].grid_owner_type == nil then
 				equipmentRemoved(grid_id, event.equipment, event.count)
 				return
 			end
 		end
 		
---		log ('on_removed end --- storage.transformer_data: ' .. serpent.block(storage.transformer_data))
+--		log ('on_removed end --- storage.lightning_rod_data: ' .. serpent.block(storage.lightning_rod_data))
 	end
 )
 
 script.on_event(defines.events.on_player_armor_inventory_changed, 
 	function(event)
---log ('on_player_armor_inventory_changed --- storage.transformer_data: ' .. serpent.block(storage.transformer_data))
+--log ('on_player_armor_inventory_changed --- storage.lightning_rod_data: ' .. serpent.block(storage.lightning_rod_data))
 		playerOrArmorChanged(event.player_index)
 	end
 )
@@ -308,7 +298,7 @@ script.on_event(defines.events.script_raised_teleported,
 script.on_event(defines.events.on_player_driving_changed_state, 
 	function(event)
 --		log ('on_player_driving_changed_state start --- ')
---		listCurrentAndAllPTEntities()
+--		listCurrentAndAllPLREntities()
 	end
 )
 
@@ -318,6 +308,7 @@ script.on_event(defines.events.on_player_cheat_mode_enabled,
 	end
 )
 
+--[[
 script.on_event(defines.events.on_lua_shortcut,
 	function(event)
 --log ('on_player_driving_changed_state start --- ')
@@ -331,40 +322,42 @@ script.on_event(defines.events.on_lua_shortcut,
 		end
 	end
 )
-
+--]]
 script.on_event(defines.events.on_tick,
 	function(event)
 		
-		tickdelay = settings.global["personal-transformer2-tick-delay"].value
+		tickdelay = settings.global["personal-lightning-rod-tick-delay"].value
 
 		if event.tick % tickdelay ~= 0 then
 			return
 		end
-		update_personal_transformer(tickdelay, storage.transformer_data)
+		update_personal_transformer(tickdelay, storage.lightning_rod_data)
 
-		update_vehicle_transformer(tickdelay, storage.transformer_data)
+		update_vehicle_transformer(tickdelay, storage.lightning_rod_data)
 
 	end)
 
-function update_personal_transformer(tickdelay, transformer_data)
+function update_personal_transformer(tickdelay, lightning_rod_data)
 	local dt = tickdelay / 60
-	for grid_id, transformer_data_values in pairs(storage.transformer_data) do
-		if transformer_data_values.grid_owner_type == "player" then
-			local max_draw = transformer_data_values.max_grid_draw
-			local buffer = transformer_data_values.buffer
-			local player = game.players[transformer_data_values.grid_owner_id]
+	for grid_id, lightning_rod_data_values in pairs(storage.lightning_rod_data) do
+		if lightning_rod_data_values.grid_owner_type == "player" then
+			local max_draw = lightning_rod_data_values.max_grid_draw
+			local buffer = lightning_rod_data_values.buffer
+			local player = game.players[lightning_rod_data_values.grid_owner_id]
 
 			local max_draw_in = 0
 			local max_draw_out = 0
 
+--[[
 			-- If a player has both toggles off, no need to check anything.
 			if not player.is_shortcut_toggled('toggle-equipment-transformer-input') and not player.is_shortcut_toggled('toggle-equipment-transformer-output') then
 				goto continue
 			end
+--]]
 
 			if player.character ~= nil then
 				-- teleport entities to player
-				teleportEntitiesToPlayerPosition(player.position, transformer_data_values.grid_transformer_entities)
+				teleportEntitiesToPlayerPosition(player.position, lightning_rod_data_values.grid_lightning_rod_entities)
 				local grid = player.character.grid
 				if grid ~= nil then
 				-- perform math
@@ -375,22 +368,22 @@ function update_personal_transformer(tickdelay, transformer_data)
 							-- if energy source calculate max_draw_in/out from equipment with flow limit
 							-- ie, what's the flow rate of the generators/batteries
 							-- toggle off appropriate draw if toggle is off
-							if player.is_shortcut_toggled('toggle-equipment-transformer-input') then
+--							if player.is_shortcut_toggled('toggle-equipment-lightning-rod-input') then
 								local draw_in = math.max(math.min(v.prototype.energy_source.get_input_flow_limit() * tickdelay, v.prototype.energy_source.buffer_capacity - v.energy), 0)
 								max_draw_in = max_draw_in + draw_in
-							else
-								max_draw_in = 0
-							end
-							if player.is_shortcut_toggled('toggle-equipment-transformer-output') then
+--							else
+--								max_draw_in = 0
+--							end
+--							if player.is_shortcut_toggled('toggle-equipment-lightning-rod-output') then
 								if v.prototype.type == "battery-equipment" or v.prototype.type == "generator-equipment" then
 									local draw_out = math.min(v.prototype.energy_source.get_output_flow_limit() * tickdelay, v.energy)
 									max_draw_out = max_draw_out + draw_out
 --log ('update_personal_transformer --- equip: Name: ' .. serpent.block(v.prototype.name))
 --log ('update_personal_transformer --- draw_out: ' .. serpent.block(draw_out))
 								end
-							else
-								max_draw_out = 0
-							end
+--							else
+--								max_draw_out = 0
+--							end
 						end
 					end
 --log ('update_personal_transformer ---   max_draw_out: ' .. serpent.block(max_draw_out))
@@ -398,7 +391,7 @@ function update_personal_transformer(tickdelay, transformer_data)
 					-- might wrap this in with the teleport to reduce amount of looping
 					local avail_in = 0
 					local request_out = 0
-					for _, pt_entity in pairs(transformer_data_values.grid_transformer_entities) do
+					for _, pt_entity in pairs(lightning_rod_data_values.grid_lightning_rod_entities) do
 						if pt_entity.type == 'electric-energy-interface' then
 							avail_in = avail_in + pt_entity.energy
 						else
@@ -432,7 +425,7 @@ function update_personal_transformer(tickdelay, transformer_data)
 						ratio_out = math.min(math.max(request_out / max_draw_out, 0), 1)
 					end
 					-----
-					for _, gt_entity in pairs(transformer_data_values.grid_transformer_entities) do
+					for _, gt_entity in pairs(lightning_rod_data_values.grid_lightning_rod_entities) do
 						if gt_entity.type == 'electric-energy-interface' then
 							gt_entity.energy = gt_entity.energy * (1 - drain_in)
 						else
@@ -456,16 +449,16 @@ function update_personal_transformer(tickdelay, transformer_data)
 	end
 end
 
-function update_vehicle_transformer(tickdelay, transformer_data)
+function update_vehicle_transformer(tickdelay, lightning_rod_data)
 	if not isVehicleGridAllowed then
 		return
 	end
 	local dt = tickdelay / 60
-	for grid_id, transformer_data_values in pairs(storage.transformer_data) do
-		if transformer_data_values.grid_owner_type == "entity" then
-			local max_draw = transformer_data_values.max_grid_draw
-			local buffer = transformer_data_values.buffer
-			local vehicle = storage.grid_vehicles[transformer_data_values.grid_owner_id]
+	for grid_id, lightning_rod_data_values in pairs(storage.lightning_rod_data) do
+		if lightning_rod_data_values.grid_owner_type == "entity" then
+			local max_draw = lightning_rod_data_values.max_grid_draw
+			local buffer = lightning_rod_data_values.buffer
+			local vehicle = storage.grid_vehicles[lightning_rod_data_values.grid_owner_id]
 
 			local max_draw_in = 0
 			local max_draw_out = 0
@@ -473,12 +466,12 @@ function update_vehicle_transformer(tickdelay, transformer_data)
 			if vehicle and vehicle.valid then
 				-- teleport entities to vehicle
 --log ('update_vehicle_transformer --- storage.grid_vehicles = '.. serpent.block(storage.grid_vehicles))
---log ('update_vehicle_transformer --- storage.transformer_data: ' .. serpent.block(storage.transformer_data))
+--log ('update_vehicle_transformer --- storage.lightning_rod_data: ' .. serpent.block(storage.lightning_rod_data))
 --log ('update_vehicle_transformer --- loop')
 --log ('update_vehicle_transformer --- grid_id = '.. serpent.block(grid_id))
 --log ('update_vehicle_transformer --- vehicle.position = '.. serpent.block(vehicle.position))
---log ('update_vehicle_transformer --- transformer_data_values.grid_transformer_entities = '.. serpent.block(transformer_data_values.grid_transformer_entities))
-				teleportEntitiesToPlayerPosition(vehicle.position, transformer_data_values.grid_transformer_entities)
+--log ('update_vehicle_transformer --- lightning_rod_data_values.grid_lightning_rod_entities = '.. serpent.block(lightning_rod_data_values.grid_lightning_rod_entities))
+				teleportEntitiesToPlayerPosition(vehicle.position, lightning_rod_data_values.grid_lightning_rod_entities)
 				local grid = vehicle.grid
 				if grid ~= nil then
 				-- perform math
@@ -497,7 +490,7 @@ function update_vehicle_transformer(tickdelay, transformer_data)
 					-- might wrap this in with the teleport to reduce amount of looping
 					local avail_in = 0
 					local request_out = 0
-					for _, pt_entity in pairs(transformer_data_values.grid_transformer_entities) do
+					for _, pt_entity in pairs(lightning_rod_data_values.grid_lightning_rod_entities) do
 						if pt_entity.type == 'electric-energy-interface' then
 							avail_in = avail_in + pt_entity.energy
 						else
@@ -531,7 +524,7 @@ function update_vehicle_transformer(tickdelay, transformer_data)
 						ratio_out = math.min(math.max(request_out / max_draw_out, 0), 1)
 					end
 					-----
-					for _, gt_entity in pairs(transformer_data_values.grid_transformer_entities) do
+					for _, gt_entity in pairs(lightning_rod_data_values.grid_lightning_rod_entities) do
 						if gt_entity.type == 'electric-energy-interface' then
 							gt_entity.energy = gt_entity.energy * (1 - drain_in)
 						else
@@ -554,26 +547,20 @@ function update_vehicle_transformer(tickdelay, transformer_data)
 	end
 end
 
-function is_personal_transformer_name_match(name)
-	return name == personal_transformer_mk1_name or name == personal_transformer_mk2_name or name == personal_transformer_mk3_name
+function is_personal_lightning_rod_name_match(name)
+	return name == personal_lightning_rod_name
 end
 
 function insert_entity(equipment_name, grid_owner, grid_id, quality_name)
 	if not is_quality_enabled then
 		quality_name = "normal"
 	end
-	if is_personal_transformer_name_match(equipment_name) then
+	if is_personal_lightning_rod_name_match(equipment_name) then
 		local entity_input_name
 		local entity_output_name
-		if personal_transformer_mk1_name == equipment_name then
-			entity_input_name = "personal-transformer-input-entity"
-			entity_output_name = "personal-transformer-output-entity"
-		elseif personal_transformer_mk2_name == equipment_name then
-			entity_input_name = "personal-transformer-mk2-input-entity"
-			entity_output_name = "personal-transformer-mk2-output-entity"
-		elseif personal_transformer_mk3_name == equipment_name then
-			entity_input_name = "personal-transformer-mk3-input-entity"
-			entity_output_name = "personal-transformer-mk3-output-entity"
+		if personal_lightning_rod_name == equipment_name then
+			entity_input_name = "personal-lightning-rod-input-entity"
+			entity_output_name = "personal-lightning-rod-output-entity"
 		end
 		local input_entity = grid_owner.surface.create_entity
 			{
@@ -582,7 +569,7 @@ function insert_entity(equipment_name, grid_owner, grid_id, quality_name)
 				force = grid_owner.force,
 				quality = quality_name
 			}
-		table.insert(storage.transformer_data[grid_id].grid_transformer_entities, input_entity)
+		table.insert(storage.lightning_rod_data[grid_id].grid_lightning_rod_entities, input_entity)
 		local output_entity = grid_owner.surface.create_entity
 			{
 				name = entity_output_name,
@@ -590,7 +577,7 @@ function insert_entity(equipment_name, grid_owner, grid_id, quality_name)
 				force = grid_owner.force,
 				quality = quality_name
 			}
-		table.insert(storage.transformer_data[grid_id].grid_transformer_entities, output_entity)
+		table.insert(storage.lightning_rod_data[grid_id].grid_lightning_rod_entities, output_entity)
 --log ('insert_entity end --- ')
 --log ('insert_entity --- input_entity.name: ' .. serpent.block(input_entity.name))
 --log ('insert_entity --- input_entity.unit_number: ' .. serpent.block(input_entity.unit_number))
@@ -598,44 +585,38 @@ function insert_entity(equipment_name, grid_owner, grid_id, quality_name)
 --log ('insert_entity --- output_entity.name: ' .. serpent.block(output_entity.name))
 --log ('insert_entity --- output_entity.unit_number: ' .. serpent.block(output_entity.unit_number))
 --log ('insert_entity --- output_entity.position: ' .. serpent.block(output_entity.position))
---listCurrentAndAllPTEntities()
+--listCurrentAndAllPLREntities()
 	end
 end
 
 function remove_entity(equipment_name, grid_id)
-	if is_personal_transformer_name_match(equipment_name) then
+	if is_personal_lightning_rod_name_match(equipment_name) then
 
---listCurrentAndAllPTEntities()
+--listCurrentAndAllPLREntities()
 	
 		local entity_input_name
 		local entity_output_name
-		if personal_transformer_mk1_name == equipment_name then
-			entity_input_name = "personal-transformer-input-entity"
-			entity_output_name = "personal-transformer-output-entity"
-		elseif personal_transformer_mk2_name == equipment_name then
-			entity_input_name = "personal-transformer-mk2-input-entity"
-			entity_output_name = "personal-transformer-mk2-output-entity"
-		elseif personal_transformer_mk3_name == equipment_name then
-			entity_input_name = "personal-transformer-mk3-input-entity"
-			entity_output_name = "personal-transformer-mk3-output-entity"
+		if personal_lightning_rod_name == equipment_name then
+			entity_input_name = "personal-lightning-rod-input-entity"
+			entity_output_name = "personal-lightning-rod-output-entity"
 		end
 
 		local input_check = false
 		local output_check = false
 --log ('remove_entity --- START grid_id: ' .. serpent.block(grid_id))
---log ('remove_entity --- storage.transformer_data: ' .. serpent.block(storage.transformer_data))
---log ('remove_entity --- storage.transformer_data_entities1: ' .. serpent.block(storage.transformer_data[grid_id].grid_transformer_entities[1].name))
---log ('remove_entity --- storage.transformer_data_entities2: ' .. serpent.block(storage.transformer_data[grid_id].grid_transformer_entities[2].name))
+--log ('remove_entity --- storage.lightning_rod_data: ' .. serpent.block(storage.lightning_rod_data))
+--log ('remove_entity --- storage.lightning_rod_data_entities1: ' .. serpent.block(storage.lightning_rod_data[grid_id].grid_lightning_rod_entities[1].name))
+--log ('remove_entity --- storage.lightning_rod_data_entities2: ' .. serpent.block(storage.lightning_rod_data[grid_id].grid_lightning_rod_entities[2].name))
 
-		for index, entity in ipairs (storage.transformer_data[grid_id].grid_transformer_entities) do
+		for index, entity in ipairs (storage.lightning_rod_data[grid_id].grid_lightning_rod_entities) do
 --		for index = 1, count do
---			local entity = storage.transformer_data[grid_id].grid_transformer_entities[index]
+--			local entity = storage.lightning_rod_data[grid_id].grid_lightning_rod_entities[index]
 --log ('remove_entity --- index: ' .. serpent.block(index))
 --log ('remove_entity --- entity: ' .. serpent.block(entity))
 --log ('remove_entity --- entity.name: ' .. serpent.block(entity.name))
 --log ('remove_entity --- entity.unit_number: ' .. serpent.block(entity.unit_number))
 			if (entity.name == entity_input_name) then
-				local entity = table.remove(storage.transformer_data[grid_id].grid_transformer_entities, index)
+				local entity = table.remove(storage.lightning_rod_data[grid_id].grid_lightning_rod_entities, index)
 --				log ('remove_entity --- entity: ' .. serpent.block(entity))
 				entity.destroy()
 				entity = nil
@@ -644,15 +625,15 @@ function remove_entity(equipment_name, grid_id)
 			end
 		end
 
-		for index, entity in ipairs (storage.transformer_data[grid_id].grid_transformer_entities) do
---			local entity = storage.transformer_data[grid_id].grid_transformer_entities[index]
+		for index, entity in ipairs (storage.lightning_rod_data[grid_id].grid_lightning_rod_entities) do
+--			local entity = storage.lightning_rod_data[grid_id].grid_lightning_rod_entities[index]
 --log ('remove_entity --- index: ' .. serpent.block(index))
 --log ('remove_entity --- entity: ' .. serpent.block(entity))
 --log ('remove_entity --- entity.name: ' .. serpent.block(entity.name))
 --log ('remove_entity --- entity.name: ' .. serpent.block(entity.name))
 --log ('remove_entity --- entity.unit_number: ' .. serpent.block(entity.unit_number))
 			if (entity.name == entity_output_name) then
-				local entity = table.remove(storage.transformer_data[grid_id].grid_transformer_entities, index)
+				local entity = table.remove(storage.lightning_rod_data[grid_id].grid_lightning_rod_entities, index)
 --				log ('remove_entity --- entity: ' .. serpent.block(entity))
 				entity.destroy()
 				entity = nil
@@ -660,12 +641,12 @@ function remove_entity(equipment_name, grid_id)
 				break
 			end
 		end
---		log ('remove_entity --- storage.transformer_data post removal: ' .. serpent.block(storage.transformer_data))
+--		log ('remove_entity --- storage.lightning_rod_data post removal: ' .. serpent.block(storage.lightning_rod_data))
 	end
---listCurrentAndAllPTEntities()
+--listCurrentAndAllPLREntities()
 
 --log ('remove_entity --- grid_id: ' .. serpent.block(grid_id))
---log ('remove_entity --- END storage.transformer_data: ' .. serpent.block(storage.transformer_data))
+--log ('remove_entity --- END storage.lightning_rod_data: ' .. serpent.block(storage.lightning_rod_data))
 end
 
 function new_vehicle_placed_event_wrapper(event)
@@ -693,31 +674,19 @@ function new_vehicle_placed(entity)
 		local grid_id = grid.unique_id
 --log ('new_vehicle_placed --- grid_id = '.. serpent.block(grid_id))
 		storage.grid_vehicles[grid_id] = vehicle
-		local mk1_count = grid.count(personal_transformer_mk1_name)
-		local mk2_count = grid.count(personal_transformer_mk2_name)
-		local mk3_count = grid.count(personal_transformer_mk3_name)
+		local mk1_count = grid.count(personal_lightning_rod_name)
 		if mk1_count > 0 then
 			for i = 1, mk1_count do
-				equipmentInserted(vehicle, grid_id, personal_transformer_mk1_name, "entity", "legendary")
-			end
-		end
-		if mk2_count > 0 then
-			for i = 1, mk2_count do
-				equipmentInserted(vehicle, grid_id, personal_transformer_mk2_name, "entity", "legendary")
-			end
-		end
-		if mk3_count > 0 then
-			for i = 1, mk3_count do
-				equipmentInserted(vehicle, grid_id, personal_transformer_mk3_name, "entity", "legendary")
+				equipmentInserted(vehicle, grid_id, personal_lightning_rod_name, "entity", "legendary")
 			end
 		end
 	end
---	log ('new_vehicle_placed end --- storage.transformer_data: ' .. serpent.block(storage.transformer_data))
+--	log ('new_vehicle_placed end --- storage.lightning_rod_data: ' .. serpent.block(storage.lightning_rod_data))
 --	log ('new_vehicle_placed end --- storage.grid_vehicles: ' .. serpent.block(storage.grid_vehicles))
 end
 
 function entity_removed(entity)
---	log ('entity_removed start --- storage.transformer_data: ' .. serpent.block(storage.transformer_data))
+--	log ('entity_removed start --- storage.lightning_rod_data: ' .. serpent.block(storage.lightning_rod_data))
 --	log ('entity_removed start --- storage.grid_vehicles: ' .. serpent.block(storage.grid_vehicles))
 --	log ('entity_removed start --- entity.unit_number: ' .. serpent.block(entity.unit_number))
 --	log ('entity_removed start --- entity.type: ' .. serpent.block(entity.type))
@@ -741,23 +710,23 @@ function entity_removed(entity)
 	
 	if not grid_id then
 --		log ('entity_removed --- grid_id is null')
---		log ('entity_removed end --- storage.transformer_data: ' .. serpent.block(storage.transformer_data))
+--		log ('entity_removed end --- storage.lightning_rod_data: ' .. serpent.block(storage.lightning_rod_data))
 --		log ('entity_removed end --- storage.grid_vehicles: ' .. serpent.block(storage.grid_vehicles))
 		return
 	end
 
 --log ('entity_removed --- grid_id: ' .. serpent.block(grid_id))
-	local transformer_data_values = storage.transformer_data[grid_id]
---log ('entity_removed --- storage.transformer_data[grid_id]: ' .. serpent.block(transformer_data_values))
+	local lightning_rod_data_values = storage.lightning_rod_data[grid_id]
+--log ('entity_removed --- storage.lightning_rod_data[grid_id]: ' .. serpent.block(lightning_rod_data_values))
 
-	if transformer_data_values and transformer_data_values.grid_owner_type == "entity" and transformer_data_values.grid_owner_id == grid_id then
-		for count_key, count_value in pairs(transformer_data_values.transformer_count) do
+	if lightning_rod_data_values and lightning_rod_data_values.grid_owner_type == "entity" and lightning_rod_data_values.grid_owner_id == grid_id then
+		for count_key, count_value in pairs(lightning_rod_data_values.lightning_rod_count) do
 			if count_value > 0 then
 				equipmentRemoved(grid_id, count_key, count_value)
 			end
 		end
 	end
---	log ('entity_removed end --- storage.transformer_data: ' .. serpent.block(storage.transformer_data))
+--	log ('entity_removed end --- storage.lightning_rod_data: ' .. serpent.block(storage.lightning_rod_data))
 --	log ('entity_removed end --- storage.grid_vehicles: ' .. serpent.block(storage.grid_vehicles))
 end
 
@@ -773,9 +742,9 @@ function isPlayerOwnerOfGrid(grid_id)
 	return nil
 end
 
-function teleportEntitiesToPlayerPosition(player_pos, grid_transformer_entities)
+function teleportEntitiesToPlayerPosition(player_pos, grid_lightning_rod_entities)
 -- NOTE: teleport across surfaces only works for players, cars, and spidertrons
-	for _, pt_entity in pairs(grid_transformer_entities) do
+	for _, pt_entity in pairs(grid_lightning_rod_entities) do
 		if pt_entity.position ~= player_pos then
 			pt_entity.teleport(player_pos)
 		end
@@ -784,76 +753,74 @@ end
 
 function equipmentInserted(player, grid_id, equipment_name, grid_owner_type, quality_name)
 --	local quality = equipment.equipment_name
---	log ('equipmentInserted before --- storage.transformer_data: ' .. serpent.block(storage.transformer_data))
-	if is_personal_transformer_name_match(equipment_name) then
-		if not storage.transformer_data[grid_id] then 
-			storage.transformer_data[grid_id] = {}
-			storage.transformer_data[grid_id].grid_transformer_entities = {}
+--	log ('equipmentInserted before --- storage.lightning_rod_data: ' .. serpent.block(storage.lightning_rod_data))
+	if is_personal_lightning_rod_name_match(equipment_name) then
+		if not storage.lightning_rod_data[grid_id] then 
+			storage.lightning_rod_data[grid_id] = {}
+			storage.lightning_rod_data[grid_id].grid_lightning_rod_entities = {}
 		end
 		insert_entity(equipment_name, player, grid_id, quality_name)
 
-		if not storage.transformer_data[grid_id].transformer_count then 
-			storage.transformer_data[grid_id].transformer_count = {}
-			storage.transformer_data[grid_id].transformer_count[personal_transformer_mk1_name] = 0
-			storage.transformer_data[grid_id].transformer_count[personal_transformer_mk2_name] = 0
-			storage.transformer_data[grid_id].transformer_count[personal_transformer_mk3_name] = 0
+		if not storage.lightning_rod_data[grid_id].lightning_rod_count then 
+			storage.lightning_rod_data[grid_id].lightning_rod_count = {}
+			storage.lightning_rod_data[grid_id].lightning_rod_count[personal_lightning_rod_name] = 0
 		end
-		storage.transformer_data[grid_id].transformer_count[equipment_name] = storage.transformer_data[grid_id].transformer_count[equipment_name] + 1
+		storage.lightning_rod_data[grid_id].lightning_rod_count[equipment_name] = storage.lightning_rod_data[grid_id].lightning_rod_count[equipment_name] + 1
 
 		if grid_owner_type == "player" then
-			storage.transformer_data[grid_id].grid_owner_id = player.index
-			toggleShortcutAvailable(player, true)
+			storage.lightning_rod_data[grid_id].grid_owner_id = player.index
+--			toggleShortcutAvailable(player, true)
 		elseif grid_owner_type == "entity" then
-			storage.transformer_data[grid_id].grid_owner_id = grid_id
+			storage.lightning_rod_data[grid_id].grid_owner_id = grid_id
 		end
-		storage.transformer_data[grid_id].grid_owner_type = grid_owner_type
+		storage.lightning_rod_data[grid_id].grid_owner_type = grid_owner_type
 
-		if storage.transformer_data[grid_id].max_grid_draw == nil then
-			storage.transformer_data[grid_id].max_grid_draw = 0
+		if storage.lightning_rod_data[grid_id].max_grid_draw == nil then
+			storage.lightning_rod_data[grid_id].max_grid_draw = 0
 		end
-		storage.transformer_data[grid_id].max_grid_draw = storage.transformer_data[grid_id].max_grid_draw + transformer_draw[equipment_name]
-		storage.transformer_data[grid_id].buffer = storage.transformer_data[grid_id].max_grid_draw / 10
---	log ('equipmentInserted after --- storage.transformer_data after: ' .. serpent.block(storage.transformer_data))
+		storage.lightning_rod_data[grid_id].max_grid_draw = storage.lightning_rod_data[grid_id].max_grid_draw + transformer_draw[equipment_name]
+		storage.lightning_rod_data[grid_id].buffer = storage.lightning_rod_data[grid_id].max_grid_draw / 10
+--	log ('equipmentInserted after --- storage.lightning_rod_data after: ' .. serpent.block(storage.lightning_rod_data))
 	end
 end
 
 function equipmentRemoved(grid_id, equipment_name, count)
-	if is_personal_transformer_name_match(equipment_name) then
---		log ('on_equipment_removed before --- storage.transformer_data: ' .. serpent.block(storage.transformer_data))
+	if is_personal_lightning_rod_name_match(equipment_name) then
+--		log ('on_equipment_removed before --- storage.lightning_rod_data: ' .. serpent.block(storage.lightning_rod_data))
 --		log ('on_equipment_removed --- grid_id: ' .. serpent.block(grid_id))
 --		log ('on_equipment_removed --- count: ' .. serpent.block(count))
 --		log ('on_equipment_removed --- equipment_name: ' .. serpent.block(equipment_name))
 		for i = 1, count do 
 			remove_entity(equipment_name, grid_id)
 		end
---		log ('on_equipment_removed --- storage.transformer_data.transformer_count[array]: ' .. serpent.block(storage.transformer_data[grid_id].transformer_count[personal_transformer_mk3_name]))
-		storage.transformer_data[grid_id].transformer_count[equipment_name] = storage.transformer_data[grid_id].transformer_count[equipment_name] - count
---		log ('on_equipment_removed post remove entity --- storage.transformer_data after: ' .. serpent.block(storage.transformer_data))
-		storage.transformer_data[grid_id].max_grid_draw = storage.transformer_data[grid_id].max_grid_draw - (transformer_draw[equipment_name] * count)
-		storage.transformer_data[grid_id].buffer = storage.transformer_data[grid_id].max_grid_draw / 10
+--		log ('on_equipment_removed --- storage.lightning_rod_data.lightning_rod_count[array]: ' .. serpent.block(storage.lightning_rod_data[grid_id].lightning_rod_count[personal_transformer_mk3_name]))
+		storage.lightning_rod_data[grid_id].lightning_rod_count[equipment_name] = storage.lightning_rod_data[grid_id].lightning_rod_count[equipment_name] - count
+--		log ('on_equipment_removed post remove entity --- storage.lightning_rod_data after: ' .. serpent.block(storage.lightning_rod_data))
+		storage.lightning_rod_data[grid_id].max_grid_draw = storage.lightning_rod_data[grid_id].max_grid_draw - (transformer_draw[equipment_name] * count)
+		storage.lightning_rod_data[grid_id].buffer = storage.lightning_rod_data[grid_id].max_grid_draw / 10
 
-		local total_count = storage.transformer_data[grid_id].transformer_count[personal_transformer_mk1_name] + storage.transformer_data[grid_id].transformer_count[personal_transformer_mk2_name] + storage.transformer_data[grid_id].transformer_count[personal_transformer_mk3_name]
+		local total_count = storage.lightning_rod_data[grid_id].lightning_rod_count[personal_lightning_rod_name]
 
 		if total_count == 0 then
-			if storage.transformer_data[grid_id].grid_owner_type == "player" then
-				toggleShortcutAvailable(game.players[storage.transformer_data[grid_id].grid_owner_id], false)
-			end
+--			if storage.lightning_rod_data[grid_id].grid_owner_type == "player" then
+--				toggleShortcutAvailable(game.players[storage.lightning_rod_data[grid_id].grid_owner_id], false)
+--			end
 		
 --			log ('If no more transformers --- Clear out object')
-			storage.transformer_data[grid_id].transformer_count = nil
-			storage.transformer_data[grid_id].grid_owner_id = nil
-			storage.transformer_data[grid_id].grid_owner_type = nil
-			storage.transformer_data[grid_id].max_grid_draw = nil
-			storage.transformer_data[grid_id].buffer = nil
-			storage.transformer_data[grid_id] = nil
+			storage.lightning_rod_data[grid_id].lightning_rod_count = nil
+			storage.lightning_rod_data[grid_id].grid_owner_id = nil
+			storage.lightning_rod_data[grid_id].grid_owner_type = nil
+			storage.lightning_rod_data[grid_id].max_grid_draw = nil
+			storage.lightning_rod_data[grid_id].buffer = nil
+			storage.lightning_rod_data[grid_id] = nil
 		end
 	end
 --	log ('on_equipment_removed after --- grid_id: ' .. serpent.block(grid_id))
---	log ('on_equipment_removed after --- storage.transformer_data: ' .. serpent.block(storage.transformer_data))
+--	log ('on_equipment_removed after --- storage.lightning_rod_data: ' .. serpent.block(storage.lightning_rod_data))
 end
 
 function playerOrArmorChanged(player_index)
---log ('playerOrArmorChanged --- START --- storage.transformer_data: ' .. serpent.block(storage.transformer_data))
+--log ('playerOrArmorChanged --- START --- storage.lightning_rod_data: ' .. serpent.block(storage.lightning_rod_data))
 	local player = game.players[player_index]
 --log ('playerOrArmorChanged --- player: ' .. serpent.block(player))
 --log ('playerOrArmorChanged --- player.controller: ' .. serpent.block(player.controller_type))
@@ -864,18 +831,18 @@ function playerOrArmorChanged(player_index)
 			return
 		end
 
-		toggleShortcutAvailable(player, true)
+--		toggleShortcutAvailable(player, true)
 		-- Search table for previously equipped armor and remove it from the table
-		for grid_id, transformer_data_values in pairs(storage.transformer_data) do
-			if transformer_data_values.grid_owner_type == "player" and transformer_data_values.grid_owner_id == player_index then
-				for count_key, count_value in pairs(transformer_data_values.transformer_count) do
+		for grid_id, lightning_rod_data_values in pairs(storage.lightning_rod_data) do
+			if lightning_rod_data_values.grid_owner_type == "player" and lightning_rod_data_values.grid_owner_id == player_index then
+				for count_key, count_value in pairs(lightning_rod_data_values.lightning_rod_count) do
 					if count_value > 0 then
 						equipmentRemoved(grid_id, count_key, count_value)
 					end
 				end
 			end
 		end
---log ('playerOrArmorChanged --- POST REMOVAL --- storage.transformer_data: ' .. serpent.block(storage.transformer_data))
+--log ('playerOrArmorChanged --- POST REMOVAL --- storage.lightning_rod_data: ' .. serpent.block(storage.lightning_rod_data))
 
 		local grid = player.character.grid
 		if grid ~= nil then
@@ -883,41 +850,34 @@ function playerOrArmorChanged(player_index)
 			
 			-- Get Number of PTs in new armor and add them all to the table
 			-- prolly need to null check character and grid
-			local mk1_count = grid.count(personal_transformer_mk1_name)
-			local mk2_count = grid.count(personal_transformer_mk2_name)
-			local mk3_count = grid.count(personal_transformer_mk3_name)
+			local mk1_count = grid.count(personal_lightning_rod_name)
 
 			for i = 1, mk1_count do
-				equipmentInserted(player, current_grid_id, personal_transformer_mk1_name, "player", "legendary")
+				equipmentInserted(player, current_grid_id, personal_lightning_rod_name, "player", "legendary")
 			end
-			for i = 1, mk2_count do
-				equipmentInserted(player, current_grid_id, personal_transformer_mk2_name, "player", "legendary")
-			end
-			for i = 1, mk3_count do
-				equipmentInserted(player, current_grid_id, personal_transformer_mk3_name, "player", "legendary")
-			end
-			
+--[[			
 			if mk1_count + mk2_count + mk3_count > 0 then
 				toggleShortcutAvailable(player, true)
 			else 
 				toggleShortcutAvailable(player, false)
 			end
-		else
-			toggleShortcutAvailable(player, false)
+--]]
+--		else
+--			toggleShortcutAvailable(player, false)
 		end
 	else
 --		toggleShortcutAvailable(player, false)
 	end
 
---log ('playerOrArmorChanged --- END --- storage.transformer_data: ' .. serpent.block(storage.transformer_data))
+--log ('playerOrArmorChanged --- END --- storage.lightning_rod_data: ' .. serpent.block(storage.lightning_rod_data))
 end
 
 function entityTeleported(entity)
---log ('entityTeleported --- PRE REMOVAL --- storage.transformer_data: ' .. serpent.block(storage.transformer_data))
+--log ('entityTeleported --- PRE REMOVAL --- storage.lightning_rod_data: ' .. serpent.block(storage.lightning_rod_data))
 	entity_removed(entity)
---log ('entityTeleported --- POST REMOVAL --- storage.transformer_data: ' .. serpent.block(storage.transformer_data))
+--log ('entityTeleported --- POST REMOVAL --- storage.lightning_rod_data: ' .. serpent.block(storage.lightning_rod_data))
 	new_vehicle_placed(entity)
---log ('entityTeleported --- END --- storage.transformer_data: ' .. serpent.block(storage.transformer_data))
+--log ('entityTeleported --- END --- storage.lightning_rod_data: ' .. serpent.block(storage.lightning_rod_data))
 end
 
 function purgeOrphanedEntities()
@@ -927,8 +887,8 @@ function purgeOrphanedEntities()
 	end
 
 	local current_entities = {}
-	for gd_id, transformer_data_values in pairs(storage.transformer_data) do
-		for index, et in ipairs (transformer_data_values.grid_transformer_entities) do
+	for gd_id, lightning_rod_data_values in pairs(storage.lightning_rod_data) do
+		for index, et in ipairs (lightning_rod_data_values.grid_lightning_rod_entities) do
 --			log ('purgeOrphanedEntities --- entity.name: ' .. serpent.block(et.name))
 --			log ('purgeOrphanedEntities --- entity.unit_number: ' .. serpent.block(et.unit_number))
 			table.insert(current_entities, et)
@@ -936,7 +896,7 @@ function purgeOrphanedEntities()
 	end
 
 	for _, surface in pairs(game.surfaces) do 
-		for _, ent in pairs (surface.find_entities_filtered({name={"personal-transformer-input-entity", "personal-transformer-output-entity", "personal-transformer-mk2-input-entity", "personal-transformer-mk2-output-entity", "personal-transformer-mk3-input-entity", "personal-transformer-mk3-output-entity"}})) do 
+		for _, ent in pairs (surface.find_entities_filtered({name={"personal-lightning-rod-input-entity", "personal-lightning-rod-output-entity"}})) do 
 			if not tableContains(current_entities, ent) then
 				ent.destroy()
 				ent = nil
@@ -944,12 +904,13 @@ function purgeOrphanedEntities()
 		end 
 	end
 --	log ('purgeOrphanedEntities --- AFTER: ')
---	listCurrentAndAllPTEntities()
+--	listCurrentAndAllPLREntities()
 end
 
 function toggleShortcutAvailable(player, is_available)
-	player.set_shortcut_available('toggle-equipment-transformer-input', is_available)
-	player.set_shortcut_available('toggle-equipment-transformer-output', is_available)
+-- NO SHORTCUTS THIS SHOULD DO NOTHING IF IT'S EVER CALLED
+--	player.set_shortcut_available('toggle-equipment-transformer-input', is_available)
+--	player.set_shortcut_available('toggle-equipment-transformer-output', is_available)
 end
 
 
@@ -963,24 +924,24 @@ function tableContains(testTable, value)
 	return false
 end
 
-function listCurrentAndAllPTEntities()
-	log ('listCurrentAndAllPTEntities --- all entities: ')
+function listCurrentAndAllPLREntities()
+	log ('listCurrentAndAllPLREntities --- all entities: ')
 	for _, surface in pairs(game.surfaces) do 
-		for _, ent in pairs (surface.find_entities_filtered({name={"personal-transformer-input-entity", "personal-transformer-output-entity", "personal-transformer-mk2-input-entity", "personal-transformer-mk2-output-entity", "personal-transformer-mk3-input-entity", "personal-transformer-mk3-output-entity"}})) do 
-			log ('listCurrentAndAllPTEntities --- entity.name: ' .. serpent.block(ent.name))
-			log ('listCurrentAndAllPTEntities --- entity.unit_number: ' .. serpent.block(ent.unit_number))
---			log ('listCurrentAndAllPTEntities --- entity.position: ' .. serpent.block(ent.position))
+		for _, ent in pairs (surface.find_entities_filtered({name={"personal-lightning-rod-input-entity", "personal-lightning-rod-output-entity"}})) do 
+			log ('listCurrentAndAllPLREntities --- entity.name: ' .. serpent.block(ent.name))
+			log ('listCurrentAndAllPLREntities --- entity.unit_number: ' .. serpent.block(ent.unit_number))
+--			log ('listCurrentAndAllPLREntities --- entity.position: ' .. serpent.block(ent.position))
 		end 
 	end
-	log ('listCurrentAndAllPTEntities --- currently listed entities: ')
-	for gd_id, transformer_data_values in pairs(storage.transformer_data) do
-		for index, et in ipairs (transformer_data_values.grid_transformer_entities) do
-			log ('listCurrentAndAllPTEntities --- entity.name: ' .. serpent.block(et.name))
-			log ('listCurrentAndAllPTEntities --- entity.unit_number: ' .. serpent.block(et.unit_number))
---			log ('listCurrentAndAllPTEntities --- entity.position: ' .. serpent.block(et.position))
+	log ('listCurrentAndAllPLREntities --- currently listed entities: ')
+	for gd_id, lightning_rod_data_values in pairs(storage.lightning_rod_data) do
+		for index, et in ipairs (lightning_rod_data_values.grid_lightning_rod_entities) do
+			log ('listCurrentAndAllPLREntities --- entity.name: ' .. serpent.block(et.name))
+			log ('listCurrentAndAllPLREntities --- entity.unit_number: ' .. serpent.block(et.unit_number))
+--			log ('listCurrentAndAllPLREntities --- entity.position: ' .. serpent.block(et.position))
 		end
 	end
-	log ('listCurrentAndAllPTEntities --- grid_id: ' .. serpent.block(grid_id))
-	log ('listCurrentAndAllPTEntities --- END storage.transformer_data: ' .. serpent.block(storage.transformer_data))
+	log ('listCurrentAndAllPLREntities --- grid_id: ' .. serpent.block(grid_id))
+	log ('listCurrentAndAllPLREntities --- END storage.lightning_rod_data: ' .. serpent.block(storage.lightning_rod_data))
 end
 
