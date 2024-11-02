@@ -1,7 +1,7 @@
-local vehicle_armor_transformers = nil
+local vehicle_armor_lightning_rods = nil
 local my_types = {"car", "spider-vehicle", "locomotive", "cargo-wagon", "fluid-wagon", "artillery-wagon"}
 
--- This is a delay constant for controlling how often the transformer script runs. The mod will behave reasonably for any value from 1 to 6.
+-- This is a delay constant for controlling how often the lightning-rod script runs. The mod will behave reasonably for any value from 1 to 6.
 -- Lower values are more UPS intensive but have finer updates, while higher values are less UPS intensive but have coarser updates.
 local tickdelay = settings.global["personal-lightning-rod-tick-delay"].value
 
@@ -17,8 +17,8 @@ local mk1_draw = settings.startup["personal-lightning-rod-flow-limit"].value * 1
 local personal_lightning_rod_name = "personal-lightning-rod-equipment"
 local isVehicleGridAllowed = settings.startup["personal-lightning-rod-allow-non-armor"].value;
 
-local transformer_draw = {}
-transformer_draw[personal_lightning_rod_name] = mk1_draw
+local lightning_rod_draw = {}
+lightning_rod_draw[personal_lightning_rod_name] = mk1_draw
 
 -- need grid_vehicles in order to reference vehicle by grid
 storage.grid_vehicles = storage.grid_vehicles or {}
@@ -43,7 +43,7 @@ local is_quality_enabled = script.active_mods["quality"]
 
 --[[
 	storage.lightning_rod_data[grid_id] = {
-		grid_lightning_rod_entities = {list of transformer entities},
+		grid_lightning_rod_entities = {list of lightning-rod entities},
 		lightning_rod_count[level] = someNum
 		grid_owner_id = someNum
 		grid_owner_type = player/entity
@@ -312,12 +312,12 @@ script.on_event(defines.events.on_player_cheat_mode_enabled,
 script.on_event(defines.events.on_lua_shortcut,
 	function(event)
 --log ('on_player_driving_changed_state start --- ')
-		if event.prototype_name == 'toggle-equipment-transformer-input' or event.prototype_name == 'toggle-equipment-transformer-output' then
+		if event.prototype_name == 'toggle-equipment-lightning-rod-input' or event.prototype_name == 'toggle-equipment-lightning-rod-output' then
 			local player = game.players[event.player_index]
-			if event.prototype_name == 'toggle-equipment-transformer-input' then
-				player.set_shortcut_toggled('toggle-equipment-transformer-input', not player.is_shortcut_toggled('toggle-equipment-transformer-input'))
-			elseif event.prototype_name == 'toggle-equipment-transformer-output' then
-				player.set_shortcut_toggled('toggle-equipment-transformer-output', not player.is_shortcut_toggled('toggle-equipment-transformer-output'))
+			if event.prototype_name == 'toggle-equipment-lightning-rod-input' then
+				player.set_shortcut_toggled('toggle-equipment-lightning-rod-input', not player.is_shortcut_toggled('toggle-equipment-lightning-rod-input'))
+			elseif event.prototype_name == 'toggle-equipment-lightning-rod-output' then
+				player.set_shortcut_toggled('toggle-equipment-lightning-rod-output', not player.is_shortcut_toggled('toggle-equipment-lightning-rod-output'))
 			end
 		end
 	end
@@ -331,13 +331,13 @@ script.on_event(defines.events.on_tick,
 		if event.tick % tickdelay ~= 0 then
 			return
 		end
-		update_personal_transformer(tickdelay, storage.lightning_rod_data)
+		update_personal_lightning_rod(tickdelay, storage.lightning_rod_data)
 
-		update_vehicle_transformer(tickdelay, storage.lightning_rod_data)
+		update_vehicle_lightning_rod(tickdelay, storage.lightning_rod_data)
 
 	end)
 
-function update_personal_transformer(tickdelay, lightning_rod_data)
+function update_personal_lightning_rod(tickdelay, lightning_rod_data)
 	local dt = tickdelay / 60
 	for grid_id, lightning_rod_data_values in pairs(storage.lightning_rod_data) do
 		if lightning_rod_data_values.grid_owner_type == "player" then
@@ -350,7 +350,7 @@ function update_personal_transformer(tickdelay, lightning_rod_data)
 
 --[[
 			-- If a player has both toggles off, no need to check anything.
-			if not player.is_shortcut_toggled('toggle-equipment-transformer-input') and not player.is_shortcut_toggled('toggle-equipment-transformer-output') then
+			if not player.is_shortcut_toggled('toggle-equipment-lightning-rod-input') and not player.is_shortcut_toggled('toggle-equipment-lightning-rod-output') then
 				goto continue
 			end
 --]]
@@ -378,15 +378,15 @@ function update_personal_transformer(tickdelay, lightning_rod_data)
 								if v.prototype.type == "battery-equipment" or v.prototype.type == "generator-equipment" then
 									local draw_out = math.min(v.prototype.energy_source.get_output_flow_limit() * tickdelay, v.energy)
 									max_draw_out = max_draw_out + draw_out
---log ('update_personal_transformer --- equip: Name: ' .. serpent.block(v.prototype.name))
---log ('update_personal_transformer --- draw_out: ' .. serpent.block(draw_out))
+--log ('update_personal_lightning_rod --- equip: Name: ' .. serpent.block(v.prototype.name))
+--log ('update_personal_lightning_rod --- draw_out: ' .. serpent.block(draw_out))
 								end
 --							else
 --								max_draw_out = 0
 --							end
 						end
 					end
---log ('update_personal_transformer ---   max_draw_out: ' .. serpent.block(max_draw_out))
+--log ('update_personal_lightning_rod ---   max_draw_out: ' .. serpent.block(max_draw_out))
 
 					-- might wrap this in with the teleport to reduce amount of looping
 					local avail_in = 0
@@ -449,7 +449,7 @@ function update_personal_transformer(tickdelay, lightning_rod_data)
 	end
 end
 
-function update_vehicle_transformer(tickdelay, lightning_rod_data)
+function update_vehicle_lightning_rod(tickdelay, lightning_rod_data)
 	if not isVehicleGridAllowed then
 		return
 	end
@@ -465,12 +465,12 @@ function update_vehicle_transformer(tickdelay, lightning_rod_data)
 
 			if vehicle and vehicle.valid then
 				-- teleport entities to vehicle
---log ('update_vehicle_transformer --- storage.grid_vehicles = '.. serpent.block(storage.grid_vehicles))
---log ('update_vehicle_transformer --- storage.lightning_rod_data: ' .. serpent.block(storage.lightning_rod_data))
---log ('update_vehicle_transformer --- loop')
---log ('update_vehicle_transformer --- grid_id = '.. serpent.block(grid_id))
---log ('update_vehicle_transformer --- vehicle.position = '.. serpent.block(vehicle.position))
---log ('update_vehicle_transformer --- lightning_rod_data_values.grid_lightning_rod_entities = '.. serpent.block(lightning_rod_data_values.grid_lightning_rod_entities))
+--log ('update_vehicle_lightning_rod --- storage.grid_vehicles = '.. serpent.block(storage.grid_vehicles))
+--log ('update_vehicle_lightning_rod --- storage.lightning_rod_data: ' .. serpent.block(storage.lightning_rod_data))
+--log ('update_vehicle_lightning_rod --- loop')
+--log ('update_vehicle_lightning_rod --- grid_id = '.. serpent.block(grid_id))
+--log ('update_vehicle_lightning_rod --- vehicle.position = '.. serpent.block(vehicle.position))
+--log ('update_vehicle_lightning_rod --- lightning_rod_data_values.grid_lightning_rod_entities = '.. serpent.block(lightning_rod_data_values.grid_lightning_rod_entities))
 				teleportEntitiesToPlayerPosition(vehicle.position, lightning_rod_data_values.grid_lightning_rod_entities)
 				local grid = vehicle.grid
 				if grid ~= nil then
@@ -778,7 +778,7 @@ function equipmentInserted(player, grid_id, equipment_name, grid_owner_type, qua
 		if storage.lightning_rod_data[grid_id].max_grid_draw == nil then
 			storage.lightning_rod_data[grid_id].max_grid_draw = 0
 		end
-		storage.lightning_rod_data[grid_id].max_grid_draw = storage.lightning_rod_data[grid_id].max_grid_draw + transformer_draw[equipment_name]
+		storage.lightning_rod_data[grid_id].max_grid_draw = storage.lightning_rod_data[grid_id].max_grid_draw + lightning_rod_draw[equipment_name]
 		storage.lightning_rod_data[grid_id].buffer = storage.lightning_rod_data[grid_id].max_grid_draw / 10
 --	log ('equipmentInserted after --- storage.lightning_rod_data after: ' .. serpent.block(storage.lightning_rod_data))
 	end
@@ -793,10 +793,10 @@ function equipmentRemoved(grid_id, equipment_name, count)
 		for i = 1, count do 
 			remove_entity(equipment_name, grid_id)
 		end
---		log ('on_equipment_removed --- storage.lightning_rod_data.lightning_rod_count[array]: ' .. serpent.block(storage.lightning_rod_data[grid_id].lightning_rod_count[personal_transformer_mk3_name]))
+--		log ('on_equipment_removed --- storage.lightning_rod_data.lightning_rod_count[array]: ' .. serpent.block(storage.lightning_rod_data[grid_id].lightning_rod_count[personal_lightning_rod_name]))
 		storage.lightning_rod_data[grid_id].lightning_rod_count[equipment_name] = storage.lightning_rod_data[grid_id].lightning_rod_count[equipment_name] - count
 --		log ('on_equipment_removed post remove entity --- storage.lightning_rod_data after: ' .. serpent.block(storage.lightning_rod_data))
-		storage.lightning_rod_data[grid_id].max_grid_draw = storage.lightning_rod_data[grid_id].max_grid_draw - (transformer_draw[equipment_name] * count)
+		storage.lightning_rod_data[grid_id].max_grid_draw = storage.lightning_rod_data[grid_id].max_grid_draw - (lightning_rod_draw[equipment_name] * count)
 		storage.lightning_rod_data[grid_id].buffer = storage.lightning_rod_data[grid_id].max_grid_draw / 10
 
 		local total_count = storage.lightning_rod_data[grid_id].lightning_rod_count[personal_lightning_rod_name]
@@ -806,7 +806,7 @@ function equipmentRemoved(grid_id, equipment_name, count)
 --				toggleShortcutAvailable(game.players[storage.lightning_rod_data[grid_id].grid_owner_id], false)
 --			end
 		
---			log ('If no more transformers --- Clear out object')
+--			log ('If no more lightning-rods --- Clear out object')
 			storage.lightning_rod_data[grid_id].lightning_rod_count = nil
 			storage.lightning_rod_data[grid_id].grid_owner_id = nil
 			storage.lightning_rod_data[grid_id].grid_owner_type = nil
@@ -909,8 +909,8 @@ end
 
 function toggleShortcutAvailable(player, is_available)
 -- NO SHORTCUTS THIS SHOULD DO NOTHING IF IT'S EVER CALLED
---	player.set_shortcut_available('toggle-equipment-transformer-input', is_available)
---	player.set_shortcut_available('toggle-equipment-transformer-output', is_available)
+--	player.set_shortcut_available('toggle-equipment-lightning-rod-input', is_available)
+--	player.set_shortcut_available('toggle-equipment-lightning-rod-output', is_available)
 end
 
 

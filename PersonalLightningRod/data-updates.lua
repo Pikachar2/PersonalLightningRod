@@ -7,8 +7,8 @@ require('prototypes.technology')
 
 
 if not settings.startup["personal-lightning-rod-allow-non-armor"].value then
--- This loop is for adding the 'armor-transformer' category to each grid found in armors.
--- This allows us to not allow equipment with the 'armor-transformer' category to be placed in grids without the 'armor-transformer' tag.
+-- This loop is for adding the 'armor-lightning-rod' category to each grid found in armors.
+-- This allows us to not allow equipment with the 'armor-lightning-rod' category to be placed in grids without the 'armor-lightning-rod' tag.
 	for _, armor in pairs (data.raw.armor) do
 --	  log('\n\n')
 --	  log('ARMOR LOOP: ')
@@ -55,6 +55,7 @@ data:extend(
 )
 
 -- Mk1
+--[[
 data.raw["battery-equipment"]["personal-lightning-rod-equipment"].energy_source.input_flow_limit = settings.startup["personal-lightning-rod-flow-limit"].value .. "kW"
 data.raw["battery-equipment"]["personal-lightning-rod-equipment"].energy_source.output_flow_limit = settings.startup["personal-lightning-rod-flow-limit"].value .. "kW"
 data.raw["battery-equipment"]["personal-lightning-rod-equipment"].energy_source.buffer_capacity = settings.startup["personal-lightning-rod-flow-limit"].value/10 .. "kJ"
@@ -62,4 +63,4 @@ data.raw["electric-energy-interface"]["personal-lightning-rod-input-entity"].ene
 data.raw["electric-energy-interface"]["personal-lightning-rod-input-entity"].energy_source.buffer_capacity = settings.startup["personal-lightning-rod-flow-limit"].value/10 .. "kJ"
 data.raw["accumulator"]["personal-lightning-rod-output-entity"].energy_source.output_flow_limit = settings.startup["personal-lightning-rod-flow-limit"].value .. "kW"
 data.raw["accumulator"]["personal-lightning-rod-output-entity"].energy_source.buffer_capacity = settings.startup["personal-lightning-rod-flow-limit"].value/10 .. "kJ"
-
+--]]

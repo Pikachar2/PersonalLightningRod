@@ -36,7 +36,7 @@ local all_resistances = {
 data:extend{
 	{
 		type = "lightning-attractor",
-		name = "personal-lightning-rod",
+		name = "personal-lightning-rod-input-entity",
 		efficiency = 0.4,
 		range_elongation = 5.0,
 		icon = "__space-age__/graphics/icons/lightning-collector.png",
@@ -65,7 +65,9 @@ data:extend{
 			{ }
 		},
 		lightning_strike_offset = {0, -4.8},
-		damaged_trigger_effect = hit_effects.entity({{-0.5, -2.5}, {0.5, 0.5}}),
+-- Not sure about this one
+--		damaged_trigger_effect = hit_effects.entity({{-0.5, -2.5}, {0.5, 0.5}}),
+
 --		drawing_box_vertical_extension = 4.5,
 --		impact_category = "metal",
 --		open_sound = sounds.electric_large_open,

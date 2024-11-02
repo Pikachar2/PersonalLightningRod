@@ -3,10 +3,10 @@ local my_types = {"car", "spider-vehicle", "locomotive", "cargo-wagon", "fluid-w
 local grid
 storage.grid_vehicles = storage.grid_vehicles or {}
 -- storage.grid_draw = storage.grid_draw or {}
--- storage.grid_transformer_entities = storage.grid_transformer_entities or {}
+-- storage.grid_lightning_rod_entities = storage.grid_lightning_rod_entities or {}
 -- storage.grid_energy_draw = storage.grid_energy_draw or {}
 
--- storage.transformer_data = storage.transformer_data or {}
+-- storage.lightning_rod_data = storage.lightning_rod_data or {}
 
 log ('migrations starting...')
 for s, surface in pairs(game.surfaces) do

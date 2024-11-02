@@ -1,10 +1,10 @@
 
 local lightning_rod_eq = {
 	["lightning-rod-1"] = {
-		name = 'personal-transformer-equipment',
+		name = 'personal-lightning-rod-equipment',
 		sprite =
 		{
-			filename = '__PersonalTransformer2__/graphics/equipment/personal-transformer.png',
+			filename = '__space-age__/graphics/icons/lightning-collector.png',
 			width = 32,
 			height = 32,
 			priority = 'medium'
@@ -14,7 +14,7 @@ local lightning_rod_eq = {
 			type = 'electric',
 			buffer_capacity = '20kJ',
 			input_flow_limit = '200kW',
-			output_flow_limit = '200kW',
+			output_flow_limit = '0kW',
 			usage_priority = 'tertiary'
 		}
 	}
